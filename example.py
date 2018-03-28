@@ -35,7 +35,14 @@ def app():
     '''
 
     '''
+    # Custom Statistics Search
+    print(goog.get_custom_statistics_search('Valuation Measures'))
+    print(goog.get_custom_statistics_search('Trading Information', '200-Day Moving Average'))
+    '''
+
+    '''
     # Statistics | Valuation measures
+    print(goog.get_valuation_measures())
     print(goog.get_market_cap())
     print(goog.get_enterprise_value())
     print(goog.get_trailing_pe())
@@ -49,6 +56,7 @@ def app():
 
     '''
     # Statistics | Financial highlights
+    print(goog.get_financial_highlights())
     print(goog.get_fiscal_year_ends())
     print(goog.get_most_recent_quarter())
     print(goog.get_profit_margin())
@@ -75,6 +83,7 @@ def app():
 
     '''
     # Statistics | Trading information
+    print(goog.get_trading_information())
     print(goog.get_beta())
     print(goog.get_52_week_change())
     print(goog.get_sp500_52_week_change())

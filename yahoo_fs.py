@@ -58,6 +58,32 @@ class Share:
         return soup_url.find(tag, attrs={attribute : value})
 
     
+    def _statistics_search(self, heading, search_for=None):
+        table_section = ''
+        head_sections = self.soup_statistics.find_all('h2')
+        for i in range(len(head_sections)):
+            if head_sections[i].getText() == heading:
+                table_section = head_sections[i].find_next_sibling()
+                break
+        
+        statistics_search = {}
+        tables = table_section.find_all('table')
+        for table in tables:
+            table_body = table.find('tbody')
+            table_rows = table_body.find_all('tr')
+            for row in table_rows:
+                cells = row.find_all('td')
+                if search_for == None:
+                    statistics_search[cells[0].find('span').getText()] = cells[1].getText()
+                elif cells[0].find('span').getText() == search_for:
+                    return cells[1].getText()
+        
+        if search_for == None:
+            return statistics_search
+        else:
+            return None
+
+
     def _company_address(self, soup_url, tag, attribute, value):
         company_location = self._search_soup_html(soup_url, tag, attribute, value)
         
@@ -212,184 +238,198 @@ class Share:
         return self._search_soup(self.soup_summary, 'td', 'data-test', 'AVERAGE_VOLUME_3MONTH-value').replace(',', '')
     
 
+    # Custom Statistics Search
+    def get_custom_statistics_search(self, heading, row=None):
+        return self._statistics_search(heading, row)
+
+
     # Statistics | Valuation measures
+    def get_valuation_measures(self):
+        return self._statistics_search('Valuation Measures')
+
     def get_market_cap(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '19')
+        return self._statistics_search('Valuation Measures', 'Market Cap (intraday)')
     
     def get_enterprise_value(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '26')
+        return self._statistics_search('Valuation Measures', 'Enterprise Value')
 
     def get_trailing_pe(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '33')
+        return self._statistics_search('Valuation Measures', 'Trailing P/E')
     
     def get_forward_pe(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '40')
+        return self._statistics_search('Valuation Measures', 'Forward P/E')
     
     def get_peg_ratio(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '47')
+        return self._statistics_search('Valuation Measures', 'PEG Ratio (5 yr expected)')
     
     def get_price_per_sales(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '55')
+        return self._statistics_search('Valuation Measures', 'Price/Sales')
     
     def get_price_per_book(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '62')
+        return self._statistics_search('Valuation Measures', 'Price/Book')
 
     def get_enterprise_value_per_revenue(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '69')
+        return self._statistics_search('Valuation Measures', 'Enterprise Value/Revenue')
 
     def get_enterprise_value_per_ebitda(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '76')
+        return self._statistics_search('Valuation Measures', 'Enterprise Value/EBITDA')
     
 
     # Statistics | Financial highlights
+    def get_financial_highlights(self):
+        return self._statistics_search('Financial Highlights')
+
     def get_fiscal_year_ends(self):
-        return self._search_soup(self.soup_statistics, 'span', 'data-reactid', '97')
+        return self._statistics_search('Financial Highlights', 'Fiscal Year Ends')
     
     def get_most_recent_quarter(self):
-        return self._search_soup(self.soup_statistics, 'span', 'data-reactid', '105')
+        return self._statistics_search('Financial Highlights', 'Most Recent Quarter')
     
     def get_profit_margin(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '117')
+        return self._statistics_search('Financial Highlights', 'Profit Margin')
     
     def get_operating_margin(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '124')
+        return self._statistics_search('Financial Highlights', 'Operating Margin')
     
     def get_return_assets(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '136')
+        return self._statistics_search('Financial Highlights', 'Return on Assets')
     
     def get_return_equity(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '143')
+        return self._statistics_search('Financial Highlights', 'Return on Equity')
     
     def get_revenue(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '155')
+        return self._statistics_search('Financial Highlights', 'Revenue')
 
     def get_revenue_per_share(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '162')
+        return self._statistics_search('Financial Highlights', 'Revenue Per Share')
     
     def get_quarterly_revenue_growth(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '169')
+        return self._statistics_search('Financial Highlights', 'Quarterly Revenue Growth')
 
     def get_gross_profit(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '176')
+        return self._statistics_search('Financial Highlights', 'Gross Profit')
     
     def get_ebitda(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '183')
+        return self._statistics_search('Financial Highlights', 'EBITDA')
     
     def get_net_income_avi_to_common(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '190')
+        return self._statistics_search('Financial Highlights', 'Net Income Avi to Common')
 
     def get_diluted_eps(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '197')
+        return self._statistics_search('Financial Highlights', 'Diluted EPS')
     
     def get_quarterly_earnings_growth(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '204')
+        return self._statistics_search('Financial Highlights', 'Quarterly Earnings Growth')
     
     def get_total_cash(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '217')
+        return self._statistics_search('Financial Highlights', 'Total Cash')
     
     def get_total_cash_per_share(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '224')
+        return self._statistics_search('Financial Highlights', 'Total Cash Per Share')
     
     def get_total_debt(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '231')
+        return self._statistics_search('Financial Highlights', 'Total Debt')
     
     def get_total_debt_per_equity(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '238')
+        return self._statistics_search('Financial Highlights', 'Total Debt/Equity')
     
     def get_current_ratio(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '245')
+        return self._statistics_search('Financial Highlights', 'Current Ratio')
     
     def get_book_value_per_share(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '252')
+        return self._statistics_search('Financial Highlights', 'Book Value Per Share')
     
     def get_operating_cash_flow(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '264')
+        return self._statistics_search('Financial Highlights', 'Operating Cash Flow')
     
     def get_levered_free_cash_flow(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '271')
+        return self._statistics_search('Financial Highlights', 'Levered Free Cash Flow')
     
 
     # Statistics | Trading information
+    def get_trading_information(self):
+        return self._statistics_search('Trading Information')
+
     def get_beta(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '290')
+        return self._statistics_search('Trading Information', 'Beta')
     
     def get_52_week_change(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '297')
+        return self._statistics_search('Trading Information', '52-Week Change')
     
     def get_sp500_52_week_change(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '304')
+        return self._statistics_search('Trading Information', 'S&P500 52-Week Change')
     
     def get_52_week_high(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '311')
+        return self._statistics_search('Trading Information', '52 Week High')
     
     def get_52_week_low(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '318')
+        return self._statistics_search('Trading Information', '52 Week Low')
     
     def get_50_day_average(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '325')
+        return self._statistics_search('Trading Information', '50-Day Moving Average')
     
     def get_200_day_average(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '332')
+        return self._statistics_search('Trading Information', '200-Day Moving Average')
     
     def get_avg_3_month_volume(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '344')
+        return self._statistics_search('Trading Information', 'Avg Vol (3 month)')
     
     def get_avg_10_day_volume(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '351')
+        return self._statistics_search('Trading Information', 'Avg Vol (10 day)')
     
     def get_shares_outstanding(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '358')
+        return self._statistics_search('Trading Information', 'Shares Outstanding')
     
     def get_float(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '365')
+        return self._statistics_search('Trading Information', 'Float')
 
     def get_percent_held_insiders(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '372')
+        return self._statistics_search('Trading Information', '% Held by Insiders')
     
     def get_percent_held_institutions(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '380')
+        return self._statistics_search('Trading Information', '% Held by Institutions')
     
     def get_shares_short(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '388')
+        return self._statistics_search('Trading Information', 'Shares Short')
 
     def get_short_ratio(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '396')
+        return self._statistics_search('Trading Information', 'Short Ratio')
     
     def get_short_percent_of_float(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '404')
+        return self._statistics_search('Trading Information', 'Short % of Float')
     
     def get_shares_short_prior(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '412')
+        return self._statistics_search('Trading Information', 'Shares Short (prior month)')
     
     def get_forward_dividend_rate(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '425')
+        return self._statistics_search('Trading Information', 'Forward Annual Dividend Rate')
     
     def get_forward_dividend_yield(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '432')
+        return self._statistics_search('Trading Information', 'Forward Annual Dividend Yield')
     
     def get_trailing_dividend_rate(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '439')
+        return self._statistics_search('Trading Information', 'Trailing Annual Dividend Rate')
     
     def get_trailing_dividend_yield(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '446')
+        return self._statistics_search('Trading Information', 'Trailing Annual Dividend Yield')
     
     def get_5_year_avg_dividend_yield(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '453')
+        return self._statistics_search('Trading Information', '5 Year Average Dividend Yield')
     
     def get_payout_ratio(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '461')
+        return self._statistics_search('Trading Information', 'Payout Ratio')
     
     def get_dividend_date(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '468')
+        return self._statistics_search('Trading Information', 'Dividend Date')
     
     def get_exdividend_date(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '476')
+        return self._statistics_search('Trading Information', 'Ex-Dividend Date')
     
     def get_last_split_factor(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '484')
+        return self._statistics_search('Trading Information', 'Last Split Factor (new per old)')
     
     def get_last_split_date(self):
-        return self._search_soup(self.soup_statistics, 'td', 'data-reactid', '492')
+        return self._statistics_search('Trading Information', 'Last Split Date')
     
 
     # Profile | Company information
