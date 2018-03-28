@@ -129,7 +129,7 @@ def app():
     # Historical data
     print(goog.get_historical_day('2018-03-22'))
     print(goog.get_historical_days('2018-03-19', '2018-03-23'))
-    pprint(goog.get_historical_range('2018-02-01', '2018-03-09'))
+    print(goog.get_historical_range('2018-02-01', '2018-03-09'))
     '''
 
     '''

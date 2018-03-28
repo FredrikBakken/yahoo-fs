@@ -12,7 +12,7 @@ import sys
 import json
 import time
 import math
-import datetime
+from datetime import datetime, timedelta
 
 from bs4 import BeautifulSoup
 
@@ -114,25 +114,37 @@ class Share:
         return key_executives
 
 
+    def _time_setup(self, date, timezone):      # TODO
+        time_offset = ''
+        if timezone == 'CEST':
+            time_offset = 1
+        elif timezone == 'EDT':
+            time_offset = 5
+        
+        return datetime.strptime(date, '%Y-%m-%d') + timedelta(hours=time_offset)
+
+
     def _historical_data(self, from_date, to_date=None, day_range=None):
+        timezone = self._search_soup(self.soup_summary, 'div', 'id', 'quote-market-notice').split(' ')[4].replace('.', '')
+        from_date = self._time_setup(from_date, timezone)
+        if not to_date == None:
+            to_date = self._time_setup(to_date, timezone)
+
         urls = []
         if to_date == None:
-            timestamp = int(time.mktime(datetime.datetime.strptime(from_date, '%Y-%m-%d').timetuple()))
-            url = "https://finance.yahoo.com/quote/OCY.OL/history?period1=" + str(timestamp) + "&period2=" + str(timestamp) + "&interval=1d&filter=history&frequency=1d"
+            timestamp = int(time.mktime(from_date.timetuple()))
+            url = self.url_summary + "/history?period1=" + str(timestamp) + "&period2=" + str(timestamp) + "&interval=1d&filter=history&frequency=1d"
             urls.append(url)
         elif to_date and day_range == 'days':
-            timestamp_from = int(time.mktime(datetime.datetime.strptime(from_date, '%Y-%m-%d').timetuple()))
-            url_from = "https://finance.yahoo.com/quote/OCY.OL/history?period1=" + str(timestamp_from) + "&period2=" + str(timestamp_from) + "&interval=1d&filter=history&frequency=1d"
+            timestamp_from = int(time.mktime(from_date.timetuple()))
+            url_from = self.url_summary + "/history?period1=" + str(timestamp_from) + "&period2=" + str(timestamp_from) + "&interval=1d&filter=history&frequency=1d"
             urls.append(url_from)
 
-            timestamp_to = int(time.mktime(datetime.datetime.strptime(to_date, '%Y-%m-%d').timetuple()))
-            url_to = "https://finance.yahoo.com/quote/OCY.OL/history?period1=" + str(timestamp_to) + "&period2=" + str(timestamp_to) + "&interval=1d&filter=history&frequency=1d"
+            timestamp_to = int(time.mktime(to_date.timetuple()))
+            url_to = self.url_summary + "/history?period1=" + str(timestamp_to) + "&period2=" + str(timestamp_to) + "&interval=1d&filter=history&frequency=1d"
             urls.append(url_to)
         elif to_date and day_range == 'range':
-            date_format = '%Y-%m-%d'
-            d0 = datetime.datetime.strptime(from_date, date_format)
-            d1 = datetime.datetime.strptime(to_date, date_format)
-            difference = int((d1 - d0).days)
+            difference = int((to_date - from_date).days)
             
             days_per_run = 120
             number_of_runs = math.ceil(difference / days_per_run)
@@ -141,14 +153,14 @@ class Share:
                 start_at = days_per_run * i
                 end_at   = days_per_run * (i+1)
 
-                start_date = d0 + datetime.timedelta(days=start_at)
-                end_date   = d0 + datetime.timedelta(days=end_at)
-                if end_date > d1:
-                    end_date = d1
+                start_date = from_date + timedelta(days=start_at)
+                end_date   = from_date + timedelta(days=end_at)
+                if end_date > to_date:
+                    end_date = to_date
                 
-                timestamp_from = int(time.mktime(datetime.datetime.strptime(start_date.strftime('%Y-%m-%d'), '%Y-%m-%d').timetuple()))
-                timestamp_to = int(time.mktime(datetime.datetime.strptime(end_date.strftime('%Y-%m-%d'), '%Y-%m-%d').timetuple()))
-                url = "https://finance.yahoo.com/quote/OCY.OL/history?period1=" + str(timestamp_from) + "&period2=" + str(timestamp_to) + "&interval=1d&filter=history&frequency=1d"
+                timestamp_from = int(time.mktime(start_date.timetuple()))
+                timestamp_to = int(time.mktime(end_date.timetuple()))
+                url = self.url_summary + "/history?period1=" + str(timestamp_from) + "&period2=" + str(timestamp_to) + "&interval=1d&filter=history&frequency=1d"
                 urls.append(url)
 
         historic_result = []
@@ -169,7 +181,7 @@ class Share:
                     historic_result.append(current_row)
 
         if day_range == 'range':
-            historic_result = sorted(historic_result, key = lambda x : datetime.datetime.strptime(x[0], '%b %d %Y'))
+            historic_result = sorted(historic_result, key = lambda x : datetime.strptime(x[0], '%b %d %Y'))
 
         return historic_result
     
