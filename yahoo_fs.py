@@ -5,11 +5,10 @@
 # https://github.com/FredrikBakken/yahoo-fs
 #
 # Author: Fredrik Bakken
-# Version: 0.0.1
+# Version: 0.0.2
 # Website: https://www.fredrikbakken.no/
 
 import sys
-import json
 import math
 import calendar
 from datetime import datetime, timedelta
@@ -87,31 +86,40 @@ class Share:
     def _company_address(self, soup_url, tag, attribute, value):
         company_location = self._search_soup_html(soup_url, tag, attribute, value)
         
+        company_address = {}
         element_counter = 0
         for element in company_location:
             element_counter += 1
             if element_counter == 2:
-                street = element
+                company_address['street'] = element
             elif element_counter == 6:
-                address = element
+                company_address['address'] = element
             elif element_counter == 10:
-                country = element
-        return json.dumps({'street': street, 'address': address, 'country': country})
+                company_address['country'] = element
+        return company_address
 
     
     def _key_executives(self, soup_url, tag, attribute, value):
         table = self._search_soup_html(soup_url, tag, attribute, value)
+        table_head = table.find('thead').find('tr')
+        table_head_row = table_head.find_all('th')
+
+        table_headings = []
+        for row in table_head_row:
+            table_headings.append(row.getText())
+
         table_body = table.find('tbody')
         table_rows = table_body.find_all('tr')
-
-        key_executives = []
+            
+        key_executive_result = []
         for row in table_rows:
             cols = row.find_all('td')
-            column = []
-            for cell in cols:
-                column.extend([cell.getText()])
-            key_executives.append(column)
-        return key_executives
+            current_row = {}
+            for i in range(len(cols)):
+                current_row[table_headings[i]] = cols[i].getText()
+            key_executive_result.append(current_row)
+
+        return key_executive_result
 
 
     def _time_setup(self, date, timezone):      # TODO: Add handling for more timezones

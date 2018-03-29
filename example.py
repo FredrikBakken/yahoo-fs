@@ -12,7 +12,7 @@ from yahoo_fs import Share
 
 def app():
     goog = Share('GOOG')
-    #print(goog.get_price())
+    print(goog.get_price())
 
     # All available commands (commented)
     
@@ -117,20 +117,20 @@ def app():
     '''
     # Profile | Company information
     print(goog.get_company_name())
-    print(goog.get_company_address())
+    pprint(goog.get_company_address())
     print(goog.get_company_phone_number())
     print(goog.get_company_website())
     print(goog.get_sector())
     print(goog.get_industry())
-    print(goog.get_key_executives())
+    pprint(goog.get_key_executives())
     '''
 
-    #'''
+    '''
     # Historical data
-    pprint(goog.get_historical_day('2018-03-23'))
+    pprint(goog.get_historical_day('2018-02-20'))
     pprint(goog.get_historical_days('2018-03-19', '2018-03-23'))
     pprint(goog.get_historical_range('2018-02-01', '2018-02-15'))
-    #'''
+    '''
 
     '''
     # Analysts
