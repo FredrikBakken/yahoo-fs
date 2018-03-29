@@ -10,8 +10,8 @@
 
 import sys
 import json
-import time
 import math
+import calendar
 from datetime import datetime, timedelta
 
 from bs4 import BeautifulSoup
@@ -114,12 +114,12 @@ class Share:
         return key_executives
 
 
-    def _time_setup(self, date, timezone):      # TODO
+    def _time_setup(self, date, timezone):      # TODO: Add handling for more timezones
         time_offset = ''
         if timezone == 'CEST':
-            time_offset = 1
+            time_offset = -1
         elif timezone == 'EDT':
-            time_offset = 5
+            time_offset = 4
         
         return datetime.strptime(date, '%Y-%m-%d') + timedelta(hours=time_offset)
 
@@ -132,15 +132,15 @@ class Share:
 
         urls = []
         if to_date == None:
-            timestamp = int(time.mktime(from_date.timetuple()))
+            timestamp = int(calendar.timegm(from_date.timetuple()))
             url = self.url_summary + "/history?period1=" + str(timestamp) + "&period2=" + str(timestamp) + "&interval=1d&filter=history&frequency=1d"
             urls.append(url)
         elif to_date and day_range == 'days':
-            timestamp_from = int(time.mktime(from_date.timetuple()))
+            timestamp_from = int(calendar.timegm(from_date.timetuple()))
             url_from = self.url_summary + "/history?period1=" + str(timestamp_from) + "&period2=" + str(timestamp_from) + "&interval=1d&filter=history&frequency=1d"
             urls.append(url_from)
 
-            timestamp_to = int(time.mktime(to_date.timetuple()))
+            timestamp_to = int(calendar.timegm(to_date.timetuple()))
             url_to = self.url_summary + "/history?period1=" + str(timestamp_to) + "&period2=" + str(timestamp_to) + "&interval=1d&filter=history&frequency=1d"
             urls.append(url_to)
         elif to_date and day_range == 'range':
@@ -158,8 +158,8 @@ class Share:
                 if end_date > to_date:
                     end_date = to_date
                 
-                timestamp_from = int(time.mktime(start_date.timetuple()))
-                timestamp_to = int(time.mktime(end_date.timetuple()))
+                timestamp_from = int(calendar.timegm(start_date.timetuple()))
+                timestamp_to = int(calendar.timegm(end_date.timetuple()))
                 url = self.url_summary + "/history?period1=" + str(timestamp_from) + "&period2=" + str(timestamp_to) + "&interval=1d&filter=history&frequency=1d"
                 urls.append(url)
 
@@ -169,19 +169,33 @@ class Share:
             soup_history = BeautifulSoup(content_history, 'html.parser')
 
             table = soup_history.find('table', attrs={'class': 'W(100%)'})
+            table_head = table.find('thead')
+            table_head_row = table_head.find_all('th')
+            
+            table_headings = []
+            for row in table_head_row:
+                table_headings.append(row.getText().replace('*', ''))
+
             table_body = table.find('tbody')
             table_rows = table_body.find_all('tr')
             
             for row in table_rows:
                 cols = row.find_all('td')
-                current_row = []
-                for cell in cols:
-                    current_row.extend([cell.getText().replace(',', '')])
-                if current_row not in historic_result and not set(['-', '-', '-', '-', '-', '-']).issubset(set(current_row)):
+                current_row = {}
+                if len(cols) != 2:
+                    for i in range(len(cols)):
+                        current_row[table_headings[i]] = cols[i].getText().replace(',', '')
+                    
+                    if not any(current_row[table_headings[0]] == cols[0] for current_row in historic_result) and \
+                       not any(current_row[table_headings[i]] == '-' for i in range(1, len(current_row))):
+                        historic_result.append(current_row)
+                else:
+                    current_row['Date'] = cols[0].getText().replace(',', '')
+                    current_row['Dividend'] = cols[1].getText().replace(',', '')
                     historic_result.append(current_row)
 
         if day_range == 'range':
-            historic_result = sorted(historic_result, key = lambda x : datetime.strptime(x[0], '%b %d %Y'))
+            historic_result = sorted(historic_result, key = lambda x : datetime.strptime(x['Date'], '%b %d %Y'))
 
         return historic_result
     
