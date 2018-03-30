@@ -5,7 +5,7 @@
 # https://github.com/FredrikBakken/yahoo-fs
 #
 # Author: Fredrik Bakken
-# Version: 0.0.2
+# Version: 0.0.3
 # Website: https://www.fredrikbakken.no/
 
 import sys
@@ -79,8 +79,7 @@ class Share:
         
         if search_for == None:
             return statistics_search
-        else:
-            return None
+        return None
 
 
     def _company_address(self, soup_url, tag, attribute, value):
@@ -206,23 +205,29 @@ class Share:
             historic_result = sorted(historic_result, key = lambda x : datetime.strptime(x['Date'], '%b %d %Y'))
 
         return historic_result
+
     
-    
-    def _analysts_tables(self, tag, attribute, value):
-        table_content = []
-        table = self.soup_analysts.find_all(tag, attrs={attribute : value})
-        table_head = table[0].find('thead').find('tr')
-        table_body = table[0].find('tbody')
-        head_rows = table_head.find_all('th')
-        body_rows = table_body.find_all('tr')
-        
-        for i in range(1, len(head_rows)):
-            row_dictionary = {}
-            table_content.append([head_rows[i].getText(), row_dictionary])
-            for j in range(1, len(body_rows)):
-                row_dictionary[body_rows[j].find_all('td')[0].getText()] = body_rows[j].find_all('td')[i].getText()
-        
-        return table_content
+    def _analysts_search(self, heading, search_for=None):
+        analysts_search_result = {}
+        table_headings = []
+
+        all_tables = self.soup_analysts.find_all('table')
+
+        for table in all_tables:
+            table_head = table.find('thead')
+            table_head_row = table_head.find('tr').find_all('th')
+            if heading == table_head_row[0].getText():
+                for i in range(1, len(table_head_row)):
+                    table_headings.append(table_head_row[i].getText())
+
+                table_body = table.find('tbody').find_all('tr')
+                for table_body_row in table_body:
+                    table_body_row_cell = table_body_row.find_all('td')
+                    analysts_search_result[table_body_row_cell[0].getText()] = {}
+                    for j in range(1, len(table_body_row_cell)):
+                        analysts_search_result[table_body_row_cell[0].getText()][table_headings[j-1]] = table_body_row_cell[j].getText()
+
+        return analysts_search_result
 
     
     # Summary
@@ -505,22 +510,22 @@ class Share:
 
     # Analysts
     def get_analysts_earnings_estimate(self):
-        return self._analysts_tables('table', 'data-reactid', '5')
+        return self._analysts_search('Earnings Estimate')
     
     def get_analysts_revenue_estimate(self):
-        return self._analysts_tables('table', 'data-reactid', '106')
+        return self._analysts_search('Revenue Estimate')
     
     def get_analysts_earnings_history(self):
-        return self._analysts_tables('table', 'data-reactid', '225')
+        return self._analysts_search('Earnings History')
     
     def get_analysts_eps_trend(self):
-        return self._analysts_tables('table', 'data-reactid', '299')
+        return self._analysts_search('EPS Trend')
     
     def get_analysts_eps_revisions(self):
-        return self._analysts_tables('table', 'data-reactid', '400')
+        return self._analysts_search('EPS Revisions')
     
     def get_analysts_growth_estimates(self):
-        return self._analysts_tables('table', 'data-reactid', '477')
+        return self._analysts_search('Growth Estimates')
 
 
     # Refresh newest content

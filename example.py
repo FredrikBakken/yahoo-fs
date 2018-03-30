@@ -134,12 +134,12 @@ def app():
 
     '''
     # Analysts
-    print(goog.get_analysts_earnings_estimate())
-    print(goog.get_analysts_revenue_estimate())
-    print(goog.get_analysts_earnings_history())
-    print(goog.get_analysts_eps_trend())
-    print(goog.get_analysts_eps_revisions())
-    print(goog.get_analysts_growth_estimates())
+    pprint(goog.get_analysts_earnings_estimate())
+    pprint(goog.get_analysts_revenue_estimate())
+    pprint(goog.get_analysts_earnings_history())
+    pprint(goog.get_analysts_eps_trend())
+    pprint(goog.get_analysts_eps_revisions())
+    pprint(goog.get_analysts_growth_estimates())
     '''
 
 
