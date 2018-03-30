@@ -43,7 +43,7 @@ def app():
 
     '''
     # Statistics | Valuation measures
-    print(goog.get_valuation_measures())
+    pprint(goog.get_valuation_measures())
     print(goog.get_market_cap())
     print(goog.get_enterprise_value())
     print(goog.get_trailing_pe())
@@ -57,7 +57,7 @@ def app():
 
     '''
     # Statistics | Financial highlights
-    print(goog.get_financial_highlights())
+    pprint(goog.get_financial_highlights())
     print(goog.get_fiscal_year_ends())
     print(goog.get_most_recent_quarter())
     print(goog.get_profit_margin())
@@ -84,7 +84,7 @@ def app():
 
     '''
     # Statistics | Trading information
-    print(goog.get_trading_information())
+    pprint(goog.get_trading_information())
     print(goog.get_beta())
     print(goog.get_52_week_change())
     print(goog.get_sp500_52_week_change())
@@ -122,6 +122,7 @@ def app():
     print(goog.get_company_website())
     print(goog.get_sector())
     print(goog.get_industry())
+    print(goog.get_number_of_full_time_employees())
     pprint(goog.get_key_executives())
     '''
 
@@ -130,6 +131,11 @@ def app():
     pprint(goog.get_historical_day('2018-02-20'))
     pprint(goog.get_historical_days('2018-03-19', '2018-03-23'))
     pprint(goog.get_historical_range('2018-02-01', '2018-02-15'))
+    '''
+
+    '''
+    # Custom Analysts Search
+    pprint(goog.get_custom_analysts_search('Revenue Estimate'))
     '''
 
     '''

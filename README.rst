@@ -54,9 +54,9 @@ Get Summary Data
     >>> print(goog.get_52_week_range())
     '817.02 - 1,186.89'
     >>> print(goog.get_volume())
-    '2728590'
+    '2,728,590'
     >>> print(goog.get_avg_daily_volume())
-    '1836955'
+    '1,836,955'
 
 Refresh Market Data
 ^^^^^^^^^^^^^^^^^^^

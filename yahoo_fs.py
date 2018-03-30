@@ -5,7 +5,7 @@
 # https://github.com/FredrikBakken/yahoo-fs
 #
 # Author: Fredrik Bakken
-# Version: 0.0.3
+# Version: 0.0.4
 # Website: https://www.fredrikbakken.no/
 
 import sys
@@ -23,9 +23,8 @@ else:
 
 
 class Share:
-    def __init__(self, ticker, loader=None):
+    def __init__(self, ticker):
         self.ticker = ticker
-        self.loader = loader
 
         self.url_summary = "https://finance.yahoo.com/quote/" + self.ticker
         self.url_statistics = self.url_summary + "/key-statistics?p=" + self.ticker
@@ -121,13 +120,29 @@ class Share:
         return key_executive_result
 
 
-    def _time_setup(self, date, timezone):      # TODO: Add handling for more timezones
+    def _time_setup(self, date, timezone):
         time_offset = ''
-        if timezone == 'CEST':
+        if timezone == 'EST' or timezone == 'EDT':
+            time_offset = 5
+        elif timezone == 'BRT' or timezone == 'BRST':
+            time_offset = 3
+        elif timezone == 'GMT' or timezone == 'BST':
+            time_offset = 0
+        elif timezone == 'CET' or timezone == 'CEST':
             time_offset = -1
-        elif timezone == 'EDT':
-            time_offset = 4
-        
+        elif timezone == 'SAST' or timezone == 'EEST':
+            time_offset = -2
+        elif timezone == 'IST':
+            time_offset = -5.5
+        elif timezone == 'CST':
+            time_offset = -8
+        elif timezone == 'JST':
+            time_offset = -9
+        elif timezone == 'AEST' or timezone == 'AEDT':
+            time_offset = -10
+        else:
+            time_offset = 0
+
         return datetime.strptime(date, '%Y-%m-%d') + timedelta(hours=time_offset)
 
 
@@ -192,9 +207,9 @@ class Share:
                 if len(cols) != 2:
                     for i in range(len(cols)):
                         current_row[table_headings[i]] = cols[i].getText().replace(',', '')
-                    
+
                     if not any(current_row[table_headings[0]] == cols[0] for current_row in historic_result) and \
-                       not any(current_row[table_headings[i]] == '-' for i in range(1, len(current_row))):
+                       not all(current_row[table_headings[i]] == '-' for i in range(1, len(current_row))):
                         historic_result.append(current_row)
                 else:
                     current_row['Date'] = cols[0].getText().replace(',', '')
@@ -207,7 +222,7 @@ class Share:
         return historic_result
 
     
-    def _analysts_search(self, heading, search_for=None):
+    def _analysts_search(self, heading):
         analysts_search_result = {}
         table_headings = []
 
@@ -271,10 +286,10 @@ class Share:
         return self._search_soup(self.soup_summary, 'td', 'data-test', 'FIFTY_TWO_WK_RANGE-value')
     
     def get_volume(self):
-        return self._search_soup(self.soup_summary, 'td', 'data-test', 'TD_VOLUME-value').replace(',', '')
+        return self._search_soup(self.soup_summary, 'td', 'data-test', 'TD_VOLUME-value')
     
     def get_avg_daily_volume(self):
-        return self._search_soup(self.soup_summary, 'td', 'data-test', 'AVERAGE_VOLUME_3MONTH-value').replace(',', '')
+        return self._search_soup(self.soup_summary, 'td', 'data-test', 'AVERAGE_VOLUME_3MONTH-value')
     
 
     # Custom Statistics Search
@@ -473,7 +488,7 @@ class Share:
 
     # Profile | Company information
     def get_company_name(self):
-        return self._search_soup(self.soup_profile, 'h3', 'data-reactid', '6')
+        return self._search_soup(self.soup_profile, 'h3', 'class', 'Fz(m)')
     
     def get_company_address(self):
         return self._company_address(self.soup_profile, 'p', 'data-reactid', '8')
@@ -507,6 +522,11 @@ class Share:
     def get_historical_range(self, from_date, to_date):
         return self._historical_data(from_date, to_date, 'range')
     
+
+    # Custom Analysts Search
+    def get_custom_analysts_search(self, heading):
+        return self._analysts_search(heading)
+
 
     # Analysts
     def get_analysts_earnings_estimate(self):
