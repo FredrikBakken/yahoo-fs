@@ -5,7 +5,7 @@
 # https://github.com/FredrikBakken/yahoo-fs
 #
 # Author: Fredrik Bakken
-# Version: 0.0.4
+# Version: 0.0.5
 # Website: https://www.fredrikbakken.no/
 
 import sys
@@ -20,6 +20,402 @@ if PYTHON_VERSION == 3:
     import urllib.request
 else:
     import urllib2
+
+
+class ETF:
+    def __init__(self, ticker):
+        self.ticker = ticker
+
+        self.url_summary = "https://finance.yahoo.com/quote/" + self.ticker
+        self.url_profile = self.url_summary + "/profile?p=" + self.ticker
+        self.url_holdings = self.url_summary + "/holdings?p=" + self.ticker
+        self.url_performance = self.url_summary + "/performance?p=" + self.ticker
+        self.url_risk = self.url_summary + "/risk?p=" + self.ticker
+
+        self.content_summary = self._open_page_content(self.url_summary)
+        self.content_profile = self._open_page_content(self.url_profile)
+        self.content_holdings = self._open_page_content(self.url_holdings)
+        self.content_performance = self._open_page_content(self.url_performance)
+        self.content_risk = self._open_page_content(self.url_risk)
+
+        self.soup_summary = BeautifulSoup(self.content_summary, 'html.parser')
+        self.soup_profile = BeautifulSoup(self.content_profile, 'html.parser')
+        self.soup_holdings = BeautifulSoup(self.content_holdings, 'html.parser')
+        self.soup_performance = BeautifulSoup(self.content_performance, 'html.parser')
+        self.soup_risk = BeautifulSoup(self.content_risk, 'html.parser')
+    
+
+    def _open_page_content(self, url):
+        if PYTHON_VERSION == 3:
+            try:
+                return urllib.request.urlopen(url).read()
+            except urllib.error.HTTPError as err:
+                print('HTTP Error: ' + str(err.code))
+        else:
+            try:
+                return urllib2.urlopen(url).read()
+            except urllib2.HTTPError as err:
+                print('HTTP Error: ' +  str(err.code))
+
+
+    def _search_soup(self, soup_url, tag, attribute, value):
+        return soup_url.find(tag, attrs={attribute : value}).getText()
+    
+    def _search_soup_html(self, soup_url, tag, attribute, value):
+        return soup_url.find(tag, attrs={attribute : value})
+    
+
+    def _profile_data(self, heading):
+        profile_results = {}
+        sections = self.soup_profile.find('div', attrs={'class' : 'W(48%) smartphone_W(100%) Fl(end)'}).find_all('div', attrs={'class' : 'Mb(25px) '})
+        for section in sections:
+            section_heading = section.find('h3').getText()
+            section_rows = section.find('div').find_all('div')
+            if heading == section_heading and heading == 'Fund Overview':
+                for row in section_rows:
+                    profile_results[row.find('span', attrs={'class' : 'Fl(start)'}).getText()] = row.find('span', attrs={'class' : 'Fl(end)'}).getText()
+                return profile_results
+                
+            elif heading == section_heading and heading == 'Fund Operations':
+                for i in range(1, len(section_rows)):
+                    profile_results[section_rows[i].find('span', attrs={'class' : 'W(50%)'}).getText()] = {}
+                    profile_results[section_rows[i].find('span', attrs={'class' : 'W(50%)'}).getText()][section_rows[0].find('span', attrs={'class' : 'W(20%)'}).getText()] = section_rows[i].find('span', attrs={'class' : 'W(20%)'}).getText()
+                    profile_results[section_rows[i].find('span', attrs={'class' : 'W(50%)'}).getText()][section_rows[0].find('span', attrs={'class' : 'W(30%)'}).getText()] = section_rows[i].find('span', attrs={'class' : 'W(30%)'}).getText()
+                return profile_results
+    
+
+    def _time_setup(self, date, timezone):
+        time_offset = ''
+        if timezone == 'EST' or timezone == 'EDT':
+            time_offset = 5
+        elif timezone == 'BRT' or timezone == 'BRST':
+            time_offset = 3
+        elif timezone == 'GMT' or timezone == 'BST':
+            time_offset = 0
+        elif timezone == 'CET' or timezone == 'CEST':
+            time_offset = -1
+        elif timezone == 'SAST' or timezone == 'EEST':
+            time_offset = -2
+        elif timezone == 'IST':
+            time_offset = -5.5
+        elif timezone == 'CST':
+            time_offset = -8
+        elif timezone == 'JST':
+            time_offset = -9
+        elif timezone == 'AEST' or timezone == 'AEDT':
+            time_offset = -10
+        else:
+            time_offset = 0
+
+        return datetime.strptime(date, '%Y-%m-%d') + timedelta(hours=time_offset)
+    
+
+    def _historical_data(self, from_date, to_date=None, day_range=None):
+        timezone = self._search_soup(self.soup_summary, 'div', 'id', 'quote-market-notice').split(' ')[4].replace('.', '')
+        from_date = self._time_setup(from_date, timezone)
+        if not to_date == None:
+            to_date = self._time_setup(to_date, timezone)
+
+        urls = []
+        if to_date == None:
+            timestamp = int(calendar.timegm(from_date.timetuple()))
+            url = self.url_summary + "/history?period1=" + str(timestamp) + "&period2=" + str(timestamp) + "&interval=1d&filter=history&frequency=1d"
+            urls.append(url)
+        elif to_date and day_range == 'days':
+            timestamp_from = int(calendar.timegm(from_date.timetuple()))
+            url_from = self.url_summary + "/history?period1=" + str(timestamp_from) + "&period2=" + str(timestamp_from) + "&interval=1d&filter=history&frequency=1d"
+            urls.append(url_from)
+
+            timestamp_to = int(calendar.timegm(to_date.timetuple()))
+            url_to = self.url_summary + "/history?period1=" + str(timestamp_to) + "&period2=" + str(timestamp_to) + "&interval=1d&filter=history&frequency=1d"
+            urls.append(url_to)
+        elif to_date and day_range == 'range':
+            difference = int((to_date - from_date).days)
+            
+            days_per_run = 120
+            number_of_runs = math.ceil(difference / days_per_run)
+
+            for i in range(number_of_runs):
+                start_at = days_per_run * i
+                end_at   = days_per_run * (i+1)
+
+                start_date = from_date + timedelta(days=start_at)
+                end_date   = from_date + timedelta(days=end_at)
+                if end_date > to_date:
+                    end_date = to_date
+                
+                timestamp_from = int(calendar.timegm(start_date.timetuple()))
+                timestamp_to = int(calendar.timegm(end_date.timetuple()))
+                url = self.url_summary + "/history?period1=" + str(timestamp_from) + "&period2=" + str(timestamp_to) + "&interval=1d&filter=history&frequency=1d"
+                urls.append(url)
+
+        historic_result = []
+        for url in urls:
+            content_history = self._open_page_content(url)
+            soup_history = BeautifulSoup(content_history, 'html.parser')
+
+            table = soup_history.find('table', attrs={'class': 'W(100%)'})
+            table_head = table.find('thead')
+            table_head_row = table_head.find_all('th')
+            
+            table_headings = []
+            for row in table_head_row:
+                table_headings.append(row.getText().replace('*', ''))
+
+            table_body = table.find('tbody')
+            table_rows = table_body.find_all('tr')
+            
+            for row in table_rows:
+                cols = row.find_all('td')
+                current_row = {}
+                if len(cols) != 2:
+                    for i in range(len(cols)):
+                        current_row[table_headings[i]] = cols[i].getText().replace(',', '')
+
+                    if not any(current_row[table_headings[0]] == cols[0] for current_row in historic_result) and \
+                       not all(current_row[table_headings[i]] == '-' for i in range(1, len(current_row))):
+                        historic_result.append(current_row)
+                else:
+                    current_row['Date'] = cols[0].getText().replace(',', '')
+                    current_row['Dividend'] = cols[1].getText().replace(',', '')
+                    historic_result.append(current_row)
+
+        if day_range == 'range':
+            historic_result = sorted(historic_result, key = lambda x : datetime.strptime(x['Date'], '%b %d %Y'))
+
+        return historic_result
+    
+
+    def _holdings_data(self, heading):
+        holdings_results = {}
+        section = self.soup_holdings.find('section', attrs={'class' : 'Pb(20px)'})
+        top_part = section.find_all('div', attrs={'class' : 'W(48%)'})
+        for part in top_part:
+            part_sections = part.find_all('div', attrs={'class' : 'Mb(25px)'})
+            for part_section in part_sections:
+                part_section_title = part_section.find('h3').getText()
+                if heading == part_section_title:
+                    start_row = 0
+                    check_section_title = part_section.find('div', attrs={'class' : 'Fz(xs)'})
+                    if check_section_title:
+                        start_row = 1
+                    
+                    part_section_contents = part_section.find('div').find_all('div')
+                    for i in range(start_row, len(part_section_contents)):
+                        span_content = part_section_contents[i].find_all('span')
+                        if len(span_content) > 0:
+                            holdings_results[span_content[0].getText()] = span_content[-1].getText()
+
+                    return holdings_results
+        
+        
+        bottom_part = section.find('div', attrs={'data-test' : 'top-holdings'})
+        bottom_title = bottom_part.find('span').getText()
+        if heading in bottom_title:
+            table = bottom_part.find('table')
+            table_head_cells = table.find('thead').find_all('th')
+            table_head_list = []
+            for table_head_cell in table_head_cells:
+                table_head_list.append(table_head_cell.getText())
+            
+            table_body_rows = table.find('tbody').find_all('tr')
+            for table_body_row in table_body_rows:
+                table_body_row_cells = table_body_row.find_all('td')
+                holdings_results[table_body_row_cells[0].getText()] = {}
+                for i in range(1, len(table_body_row_cells)):
+                    holdings_results[table_body_row_cells[0].getText()][table_head_list[i]] = table_body_row_cells[i].getText()
+
+            return holdings_results
+
+        return
+
+
+    def _performance_data(self, heading):
+        performance_results = {}
+        section = self.soup_performance.find('section', attrs={'class' : 'Pb(20px)'})
+        section_parts = section.find_all('div', attrs={'class' : 'Mb(25px)'})
+        for section_part in section_parts:
+            section_part_title = section_part.find('h3').getText()
+            if heading == section_part_title:
+                section_part_list_rows = section_part.find('div').find_all('div')
+                section_part_list_titles = []
+                for section_part_list_row in section_part_list_rows:
+                    if len(section_part_list_titles) == 0:
+                        section_part_list_titles.append(section_part_list_row.find('span', attrs={'class' : 'W(20%)'}).getText())
+                        section_part_list_titles.append(section_part_list_row.find('span', attrs={'class' : 'W(30%)'}).getText())
+                    else:
+                        try:
+                            column_1 = section_part_list_row.find('span', attrs={'class' : 'W(50%)'})
+                            if column_1 == None:
+                                column_1 = section_part_list_row.find('span', attrs={'class' : 'W(10%)'})
+                            column_2 = section_part_list_row.find('span', attrs={'class' : 'W(20%)'})
+                            column_3 = section_part_list_row.find('span', attrs={'class' : 'W(30%)'})
+
+                            performance_results[column_1.getText()] = {}
+                            performance_results[column_1.getText()][section_part_list_titles[0]] = column_2.getText()
+                            performance_results[column_1.getText()][section_part_list_titles[1]] = column_3.getText()
+                        except:
+                            pass
+
+                return performance_results
+        
+        return
+    
+
+    def _risk_data(self):
+        risk_results = {}
+        section = self.soup_risk.find('div', attrs={'class' : 'Miw(650px)'})
+        section_title_row = section.find('div', attrs={'class' : 'Fz(xs)'}).find_all('div', attrs={'class' : 'W(25%)'})
+        title_list = []
+        for cell in section_title_row:
+            year = cell.find('span', attrs={'class' : 'Ta(c)'}).getText()
+            current_etf = cell.find('span', attrs={'class' : 'Fl(start)'}).getText()
+            category_avg = cell.find('span', attrs={'class' : 'Fl(end)'}).getText()
+            title_list.append([year, current_etf, category_avg])
+        
+        section_body_rows = section.find_all('div', attrs={'class' : 'H(25px)'})
+        for section_body_row in section_body_rows:
+            topic = section_body_row.find('div', attrs={'class' : 'W(24%)'}).getText()
+            risk_results[topic] = {}
+
+            body_contents = section_body_row.find_all('div', attrs={'class' : 'W(25%)'})
+            for i in range(len(body_contents)):
+                risk_results[topic][title_list[i][0]] = {}
+                risk_results[topic][title_list[i][0]][title_list[i][1]] = body_contents[i].find('span', attrs={'class' : 'W(39%)'}).getText()
+                risk_results[topic][title_list[i][0]][title_list[i][2]] = body_contents[i].find('span', attrs={'class' : 'W(57%)'}).getText()
+        
+        return risk_results
+
+
+    # Summary
+    def get_stock_exchange(self):
+        return self._search_soup(self.soup_summary, 'span', 'data-reactid', '9').split(' ')[0]
+    
+    def get_currency(self):
+        return self._search_soup(self.soup_summary, 'span', 'data-reactid', '9').split(' ')[-1]
+
+    def get_price(self):
+        return self._search_soup(self.soup_summary, 'span', 'data-reactid', '14')
+    
+    def get_change(self):
+        return self._search_soup(self.soup_summary, 'span', 'data-reactid', '17').split(' ')[0]
+    
+    def get_percent_change(self):
+        return self._search_soup(self.soup_summary, 'span', 'data-reactid', '17').split(' ')[1].replace('(', '').replace(')', '')
+    
+    def get_previous_trade_time(self):
+        return self._search_soup(self.soup_summary, 'div', 'id', 'quote-market-notice').split(' ')[3]
+    
+    def get_trade_timezone(self):
+        return self._search_soup(self.soup_summary, 'div', 'id', 'quote-market-notice').split(' ')[4].replace('.', '')
+    
+    def get_previous_close(self):
+        return self._search_soup(self.soup_summary, 'td', 'data-test', 'PREV_CLOSE-value')
+    
+    def get_open(self):
+        return self._search_soup(self.soup_summary, 'td', 'data-test', 'OPEN-value')
+    
+    def get_bid(self):
+        return self._search_soup(self.soup_summary, 'td', 'data-test', 'BID-value')
+    
+    def get_ask(self):
+        return self._search_soup(self.soup_summary, 'td', 'data-test', 'ASK-value')
+
+    def get_day_range(self):
+        return self._search_soup(self.soup_summary, 'td', 'data-test', 'DAYS_RANGE-value')
+    
+    def get_52_week_range(self):
+        return self._search_soup(self.soup_summary, 'td', 'data-test', 'FIFTY_TWO_WK_RANGE-value')
+    
+    def get_volume(self):
+        return self._search_soup(self.soup_summary, 'td', 'data-test', 'TD_VOLUME-value')
+    
+    def get_avg_daily_volume(self):
+        return self._search_soup(self.soup_summary, 'td', 'data-test', 'AVERAGE_VOLUME_3MONTH-value')
+    
+    def get_net_assets(self):
+        return self._search_soup(self.soup_summary, 'td', 'data-test', 'NET_ASSETS-value')
+    
+    def get_nav(self):
+        return self._search_soup(self.soup_summary, 'td', 'data-test', 'NAV-value')
+    
+    def get_pe_ratio(self):
+        return self._search_soup(self.soup_summary, 'td', 'data-test', 'PE_RATIO-value')
+    
+    def get_yield(self):
+        return self._search_soup(self.soup_summary, 'td', 'data-test', 'TD_YIELD-value')
+    
+    def get_ytd_return(self):
+        return self._search_soup(self.soup_summary, 'td', 'data-test', 'YTD_RETURN-value')
+    
+    def get_beta(self):
+        return self._search_soup(self.soup_summary, 'td', 'data-test', 'BETA_3Y-value')
+    
+    def get_expense_ratio(self):
+        return self._search_soup(self.soup_summary, 'td', 'data-test', 'EXPENSE_RATIO-value')
+    
+    def get_inception_date(self):
+        return self._search_soup(self.soup_summary, 'td', 'data-test', 'FUND_INCEPTION_DATE-value')
+    
+
+    # Profile
+    def get_company_name(self):
+        return self._search_soup(self.soup_profile, 'h3', 'class', 'Mend(40px)')
+    
+    def get_company_phone(self):
+        return self._search_soup(self.soup_profile, 'span', 'class', 'C($c-fuji-blue-1-b)')
+    
+    def get_fund_overview(self):
+        return self._profile_data('Fund Overview')
+    
+    def get_fund_operations(self):
+        return self._profile_data('Fund Operations')
+    
+
+    # Historical data
+    def get_historical_day(self, date):
+        return self._historical_data(date)
+    
+    def get_historical_days(self, from_date, to_date):
+        return self._historical_data(from_date, to_date, 'days')
+    
+    def get_historical_range(self, from_date, to_date):
+        return self._historical_data(from_date, to_date, 'range')
+    
+
+    # Holdings
+    def get_portfolio_composition(self):
+        return self._holdings_data('Overall Portfolio Composition (%)')
+
+    def get_sector_weightings(self):
+        return self._holdings_data('Sector Weightings (%)')
+
+    def get_equity_holdings(self):
+        return self._holdings_data('Equity Holdings')
+    
+    def get_bond_ratings(self):
+        return self._holdings_data('Bond Ratings')
+    
+    def get_top_10_holdings(self):
+        return self._holdings_data('Top 10 Holdings')
+    
+
+    # Performance
+    def get_trailing_returns_vs_benchmark(self):
+        return self._performance_data('Trailing Returns (%) Vs. Benchmarks')
+    
+    def get_annual_total_return_history(self):
+        return self._performance_data('Annual Total Return (%) History')
+
+
+    # Risk
+    def get_risk_statistics(self):
+        return self._risk_data()
+
+
+    # Refresh newest content
+    def refresh(self):
+        self.__init__(self.ticker)
 
 
 class Share:

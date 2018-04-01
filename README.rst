@@ -262,6 +262,7 @@ Available Methods
 - ``get_historical_day(date)``
 - ``get_historical_days(date_from, date_to)``
 - ``get_historical_range(date_from, date_to)``
+- ``get_custom_analysts_search(heading)``
 - ``get_analysts_earnings_estimate()``
 - ``get_analysts_revenue_estimate()``
 - ``get_analysts_earnings_history()``
