@@ -4,13 +4,11 @@
 # Author: Fredrik Bakken
 # Website: https://www.fredrikbakken.no/
 
-import time
-
 from pprint import pprint
 from yahoo_fs import Share
 
 
-def app():
+def stock_examples():
     goog = Share('GOOG')
     print(goog.get_price())
 
@@ -150,4 +148,4 @@ def app():
 
 
 if __name__ == '__main__':
-    app()
+    stock_examples()
