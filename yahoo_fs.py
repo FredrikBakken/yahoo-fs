@@ -482,10 +482,17 @@ class Share:
             head_section = search_soup(head_sections[i])
             if heading == head_section:
                 table_section = head_sections[i].find_next_sibling()
+                #TODO implement this better
+                try:
+                    while search_for not in table_section.text:
+                        table_section = table_section.find_next_sibling()
+                except ValueError:
+                    print(f"No table value found for {search_for}")
                 break
 
         statistics_search = {}
         tables = table_section.find_all('table')
+        print(tables)
         for table in tables:
             table_body = table.find('tbody')
             table_rows = table_body.find_all('tr')
