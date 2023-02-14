@@ -17,7 +17,7 @@ from bs4 import BeautifulSoup
 
 PYTHON_VERSION = sys.version_info[0]
 if PYTHON_VERSION == 3:
-    import urllib.request
+    import requests
 else:
     import urllib2
 
@@ -25,9 +25,10 @@ else:
 def open_page_content(url):
     """ Method for opening and reading urls.
     """
+    headers = { 'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:90.0) Gecko/20100101 Firefox/90.0' }
     if PYTHON_VERSION == 3:
         try:
-            return urllib.request.urlopen(url).read()
+            return requests.get(url, headers = headers).content
         except urllib.error.HTTPError as err:
             print('HTTP Error Code: %s' % (str(err.code)))
     else:
@@ -103,7 +104,7 @@ def historical_data(url_summary, soup_summary, from_date, to_date=None, day_rang
         urls.append(url_to)
     elif to_date and day_range == 'range':
         difference = int((to_date - from_date).days)
-        
+
         days_per_run = 120
         number_of_runs = math.ceil(difference / days_per_run)
 
@@ -115,7 +116,7 @@ def historical_data(url_summary, soup_summary, from_date, to_date=None, day_rang
             end_date   = from_date + timedelta(days=end_at)
             if end_date > to_date:
                 end_date = to_date
-            
+
             timestamp_from = int(calendar.timegm(start_date.timetuple()))
             timestamp_to = int(calendar.timegm(end_date.timetuple()))
             url = url_summary + "/history?period1=" + str(timestamp_from) + "&period2=" + str(timestamp_to) + "&interval=1d&filter=history&frequency=1d"
@@ -129,7 +130,7 @@ def historical_data(url_summary, soup_summary, from_date, to_date=None, day_rang
         table = soup_history.find('table', attrs={'class': 'W(100%)'})
         table_head = table.find('thead')
         table_head_row = table_head.find_all('th')
-        
+
         table_headings = []
         for cell in table_head_row:
             cell_text = search_soup(cell).replace('*', '')
@@ -137,7 +138,7 @@ def historical_data(url_summary, soup_summary, from_date, to_date=None, day_rang
 
         table_body = table.find('tbody')
         table_rows = table_body.find_all('tr')
-        
+
         for row in table_rows:
             cols = row.find_all('td')
             current_row = {}
@@ -198,7 +199,7 @@ class ETF:
                     if not row_text_start == None:
                         profile_results[row_text_start] = row_text_end
                 return profile_results
-                
+
             elif heading == section_heading and heading == 'Fund Operations':
                 etf_title = search_soup(section_rows[0], 'span', 'class', 'W(20%)')
                 avg_title = search_soup(section_rows[0], 'span', 'class', 'W(30%)')
@@ -227,7 +228,7 @@ class ETF:
                     check_section_title = part_section.find('div', attrs={'class' : 'Fz(xs)'})
                     if check_section_title:
                         start_row = 1
-                    
+
                     part_section_contents = part_section.find('div').find_all('div')
                     for i in range(start_row, len(part_section_contents)):
                         span_content = part_section_contents[i].find_all('span')
@@ -238,7 +239,7 @@ class ETF:
                                 holdings_results[data_key] = data_value
 
                     return holdings_results
-        
+
         bottom_part = section.find('div', attrs={'data-test' : 'top-holdings'})
         bottom_title = search_soup(bottom_part, 'span')
         if heading in bottom_title:
@@ -248,7 +249,7 @@ class ETF:
             for table_head_cell in table_head_cells:
                 table_head_cell_text = search_soup(table_head_cell)
                 table_head_list.append(table_head_cell_text)
-            
+
             table_body_rows = table.find('tbody').find_all('tr')
             for table_body_row in table_body_rows:
                 table_body_row_cells = table_body_row.find_all('td')
@@ -284,16 +285,16 @@ class ETF:
                             column_1 = search_soup(section_part_list_row, 'span', 'class', 'W(10%)')
                         column_2 = search_soup(section_part_list_row, 'span', 'class', 'W(20%)')
                         column_3 = search_soup(section_part_list_row, 'span', 'class', 'W(30%)')
-                        
+
                         if not column_1 == None:
                             performance_results[column_1] = {}
                             performance_results[column_1][section_part_list_titles[0]] = column_2
                             performance_results[column_1][section_part_list_titles[1]] = column_3
 
                 return performance_results
-        
+
         return
-    
+
 
     def _risk_data(self):
         risk_results = {}
@@ -305,7 +306,7 @@ class ETF:
             current_etf = search_soup(cell, 'span', 'class', 'Fl(start)')
             category_avg = search_soup(cell, 'span', 'class', 'Fl(end)')
             title_list.append([year, current_etf, category_avg])
-        
+
         section_body_rows = section.find_all('div', attrs={'class' : 'H(25px)'})
         for section_body_row in section_body_rows:
             topic = search_soup(section_body_row, 'div', 'class', 'W(24%)')
@@ -319,105 +320,105 @@ class ETF:
                     risk_results[topic][title_list[i][0]] = {}
                     risk_results[topic][title_list[i][0]][title_list[i][1]] = etf_data
                     risk_results[topic][title_list[i][0]][title_list[i][2]] = avg_data
-        
+
         return risk_results
 
 
     # Summary
     def get_stock_exchange(self):
         return search_soup(self.soup_summary, 'span', 'data-reactid', '9').split(' ')[0]
-    
+
     def get_currency(self):
         return search_soup(self.soup_summary, 'span', 'data-reactid', '9').split(' ')[-1]
 
     def get_price(self):
         return search_soup(self.soup_summary, 'span', 'data-reactid', '14')
-    
+
     def get_change(self):
         return search_soup(self.soup_summary, 'span', 'data-reactid', '17').split(' ')[0]
-    
+
     def get_percent_change(self):
         return search_soup(self.soup_summary, 'span', 'data-reactid', '17').split(' ')[1].replace('(', '').replace(')', '')
-    
+
     def get_previous_trade_time(self):
         return search_soup(self.soup_summary, 'div', 'id', 'quote-market-notice').split(' ')[3]
-    
+
     def get_trade_timezone(self):
         return search_soup(self.soup_summary, 'div', 'id', 'quote-market-notice').split(' ')[4].replace('.', '')
-    
+
     def get_previous_close(self):
         return search_soup(self.soup_summary, 'td', 'data-test', 'PREV_CLOSE-value')
-    
+
     def get_open(self):
         return search_soup(self.soup_summary, 'td', 'data-test', 'OPEN-value')
-    
+
     def get_bid(self):
         return search_soup(self.soup_summary, 'td', 'data-test', 'BID-value')
-    
+
     def get_ask(self):
         return search_soup(self.soup_summary, 'td', 'data-test', 'ASK-value')
 
     def get_day_range(self):
         return search_soup(self.soup_summary, 'td', 'data-test', 'DAYS_RANGE-value')
-    
+
     def get_52_week_range(self):
         return search_soup(self.soup_summary, 'td', 'data-test', 'FIFTY_TWO_WK_RANGE-value')
-    
+
     def get_volume(self):
         return search_soup(self.soup_summary, 'td', 'data-test', 'TD_VOLUME-value')
-    
+
     def get_avg_daily_volume(self):
         return search_soup(self.soup_summary, 'td', 'data-test', 'AVERAGE_VOLUME_3MONTH-value')
-    
+
     def get_net_assets(self):
         return search_soup(self.soup_summary, 'td', 'data-test', 'NET_ASSETS-value')
-    
+
     def get_nav(self):
         return search_soup(self.soup_summary, 'td', 'data-test', 'NAV-value')
-    
+
     def get_pe_ratio(self):
         return search_soup(self.soup_summary, 'td', 'data-test', 'PE_RATIO-value')
-    
+
     def get_yield(self):
         return search_soup(self.soup_summary, 'td', 'data-test', 'TD_YIELD-value')
-    
+
     def get_ytd_return(self):
         return search_soup(self.soup_summary, 'td', 'data-test', 'YTD_RETURN-value')
-    
+
     def get_beta(self):
         return search_soup(self.soup_summary, 'td', 'data-test', 'BETA_3Y-value')
-    
+
     def get_expense_ratio(self):
         return search_soup(self.soup_summary, 'td', 'data-test', 'EXPENSE_RATIO-value')
-    
+
     def get_inception_date(self):
         return search_soup(self.soup_summary, 'td', 'data-test', 'FUND_INCEPTION_DATE-value')
-    
+
 
     # Profile
     def get_company_name(self):
         return search_soup(self.soup_profile, 'h3', 'class', 'Mend(40px)')
-    
+
     def get_company_phone(self):
         return search_soup(self.soup_profile, 'span', 'class', 'C($c-fuji-blue-1-b)')
-    
+
     def get_fund_overview(self):
         return self._profile_data('Fund Overview')
-    
+
     def get_fund_operations(self):
         return self._profile_data('Fund Operations')
-    
+
 
     # Historical data
     def get_historical_day(self, date):
         return historical_data(self.url_summary, self.soup_summary, date)
-    
+
     def get_historical_days(self, from_date, to_date):
         return historical_data(self.url_summary, self.soup_summary, from_date, to_date, 'days')
-    
+
     def get_historical_range(self, from_date, to_date):
         return historical_data(self.url_summary, self.soup_summary, from_date, to_date, 'range')
-    
+
 
     # Holdings
     def get_portfolio_composition(self):
@@ -428,18 +429,18 @@ class ETF:
 
     def get_equity_holdings(self):
         return self._holdings_data('Equity Holdings')
-    
+
     def get_bond_ratings(self):
         return self._holdings_data('Bond Ratings')
-    
+
     def get_top_10_holdings(self):
         return self._holdings_data('Total Assets')
-    
+
 
     # Performance
     def get_trailing_returns_vs_benchmark(self):
         return self._performance_data('Trailing Returns (%) Vs. Benchmarks')
-    
+
     def get_annual_total_return_history(self):
         return self._performance_data('Annual Total Return (%) History')
 
@@ -473,7 +474,7 @@ class Share:
         self.soup_profile = BeautifulSoup(self.content_profile, 'html.parser')
         self.soup_analysts = BeautifulSoup(self.content_analysts, 'html.parser')
 
-    
+
     def _statistics_search(self, heading, search_for=None):
         table_section = ''
         head_sections = self.soup_statistics.find_all('h2')
@@ -481,10 +482,17 @@ class Share:
             head_section = search_soup(head_sections[i])
             if heading == head_section:
                 table_section = head_sections[i].find_next_sibling()
+                #TODO implement this better
+                try:
+                    while search_for not in table_section.text:
+                        table_section = table_section.find_next_sibling()
+                except ValueError:
+                    print(f"No table value found for {search_for}")
                 break
-        
+
         statistics_search = {}
         tables = table_section.find_all('table')
+        print(tables)
         for table in tables:
             table_body = table.find('tbody')
             table_rows = table_body.find_all('tr')
@@ -497,7 +505,7 @@ class Share:
                         statistics_search[cell_topic] = cell_content
                     elif cell_topic == search_for:
                         return cell_content
-        
+
         if search_for == None:
             return statistics_search
         return None
@@ -505,7 +513,7 @@ class Share:
 
     def _company_address(self, tag, attribute, value):
         company_location = self.soup_profile.find(tag, attrs={attribute : value})
-        
+
         company_address = {}
         element_counter = 0
         for element in company_location:
@@ -518,7 +526,7 @@ class Share:
                 company_address['country'] = element
         return company_address
 
-    
+
     def _key_executives(self, tag, attribute, value):
         table = self.soup_profile.find(tag, attrs={attribute : value})
         table_head = table.find('thead').find('tr')
@@ -531,7 +539,7 @@ class Share:
 
         table_body = table.find('tbody')
         table_rows = table_body.find_all('tr')
-            
+
         key_executive_result = []
         for row in table_rows:
             cols = row.find_all('td')
@@ -543,7 +551,7 @@ class Share:
 
         return key_executive_result
 
-    
+
     def _analysts_search(self, heading):
         analysts_search_result = {}
         table_headings = []
@@ -571,53 +579,53 @@ class Share:
 
         return analysts_search_result
 
-    
+
     # Summary
     def get_stock_exchange(self):
         return search_soup(self.soup_summary, 'span', 'data-reactid', '9').split(' ')[0]
-    
+
     def get_currency(self):
         return search_soup(self.soup_summary, 'span', 'data-reactid', '9').split(' ')[-1]
 
     def get_price(self):
         return search_soup(self.soup_summary, 'span', 'data-reactid', '14')
-    
+
     def get_change(self):
         return search_soup(self.soup_summary, 'span', 'data-reactid', '17').split(' ')[0]
-    
+
     def get_percent_change(self):
         return search_soup(self.soup_summary, 'span', 'data-reactid', '17').split(' ')[1].replace('(', '').replace(')', '')
-    
+
     def get_previous_trade_time(self):
         return search_soup(self.soup_summary, 'div', 'id', 'quote-market-notice').split(' ')[3]
-    
+
     def get_trade_timezone(self):
         return search_soup(self.soup_summary, 'div', 'id', 'quote-market-notice').split(' ')[4].replace('.', '')
-    
+
     def get_previous_close(self):
         return search_soup(self.soup_summary, 'td', 'data-test', 'PREV_CLOSE-value')
-    
+
     def get_open(self):
         return search_soup(self.soup_summary, 'td', 'data-test', 'OPEN-value')
-    
+
     def get_bid(self):
         return search_soup(self.soup_summary, 'td', 'data-test', 'BID-value')
-    
+
     def get_ask(self):
         return search_soup(self.soup_summary, 'td', 'data-test', 'ASK-value')
 
     def get_day_range(self):
         return search_soup(self.soup_summary, 'td', 'data-test', 'DAYS_RANGE-value')
-    
+
     def get_52_week_range(self):
         return search_soup(self.soup_summary, 'td', 'data-test', 'FIFTY_TWO_WK_RANGE-value')
-    
+
     def get_volume(self):
         return search_soup(self.soup_summary, 'td', 'data-test', 'TD_VOLUME-value')
-    
+
     def get_avg_daily_volume(self):
         return search_soup(self.soup_summary, 'td', 'data-test', 'AVERAGE_VOLUME_3MONTH-value')
-    
+
 
     # Custom Statistics Search
     def get_custom_statistics_search(self, heading, row=None):
@@ -630,22 +638,22 @@ class Share:
 
     def get_market_cap(self):
         return self._statistics_search('Valuation Measures', 'Market Cap (intraday)')
-    
+
     def get_enterprise_value(self):
         return self._statistics_search('Valuation Measures', 'Enterprise Value')
 
     def get_trailing_pe(self):
         return self._statistics_search('Valuation Measures', 'Trailing P/E')
-    
+
     def get_forward_pe(self):
         return self._statistics_search('Valuation Measures', 'Forward P/E')
-    
+
     def get_peg_ratio(self):
         return self._statistics_search('Valuation Measures', 'PEG Ratio (5 yr expected)')
-    
+
     def get_price_per_sales(self):
         return self._statistics_search('Valuation Measures', 'Price/Sales')
-    
+
     def get_price_per_book(self):
         return self._statistics_search('Valuation Measures', 'Price/Book')
 
@@ -654,7 +662,7 @@ class Share:
 
     def get_enterprise_value_per_ebitda(self):
         return self._statistics_search('Valuation Measures', 'Enterprise Value/EBITDA')
-    
+
 
     # Statistics | Financial highlights
     def get_financial_highlights(self):
@@ -662,70 +670,70 @@ class Share:
 
     def get_fiscal_year_ends(self):
         return self._statistics_search('Financial Highlights', 'Fiscal Year Ends')
-    
+
     def get_most_recent_quarter(self):
         return self._statistics_search('Financial Highlights', 'Most Recent Quarter')
-    
+
     def get_profit_margin(self):
         return self._statistics_search('Financial Highlights', 'Profit Margin')
-    
+
     def get_operating_margin(self):
         return self._statistics_search('Financial Highlights', 'Operating Margin')
-    
+
     def get_return_assets(self):
         return self._statistics_search('Financial Highlights', 'Return on Assets')
-    
+
     def get_return_equity(self):
         return self._statistics_search('Financial Highlights', 'Return on Equity')
-    
+
     def get_revenue(self):
         return self._statistics_search('Financial Highlights', 'Revenue')
 
     def get_revenue_per_share(self):
         return self._statistics_search('Financial Highlights', 'Revenue Per Share')
-    
+
     def get_quarterly_revenue_growth(self):
         return self._statistics_search('Financial Highlights', 'Quarterly Revenue Growth')
 
     def get_gross_profit(self):
         return self._statistics_search('Financial Highlights', 'Gross Profit')
-    
+
     def get_ebitda(self):
         return self._statistics_search('Financial Highlights', 'EBITDA')
-    
+
     def get_net_income_avi_to_common(self):
         return self._statistics_search('Financial Highlights', 'Net Income Avi to Common')
 
     def get_diluted_eps(self):
         return self._statistics_search('Financial Highlights', 'Diluted EPS')
-    
+
     def get_quarterly_earnings_growth(self):
         return self._statistics_search('Financial Highlights', 'Quarterly Earnings Growth')
-    
+
     def get_total_cash(self):
         return self._statistics_search('Financial Highlights', 'Total Cash')
-    
+
     def get_total_cash_per_share(self):
         return self._statistics_search('Financial Highlights', 'Total Cash Per Share')
-    
+
     def get_total_debt(self):
         return self._statistics_search('Financial Highlights', 'Total Debt')
-    
+
     def get_total_debt_per_equity(self):
         return self._statistics_search('Financial Highlights', 'Total Debt/Equity')
-    
+
     def get_current_ratio(self):
         return self._statistics_search('Financial Highlights', 'Current Ratio')
-    
+
     def get_book_value_per_share(self):
         return self._statistics_search('Financial Highlights', 'Book Value Per Share')
-    
+
     def get_operating_cash_flow(self):
         return self._statistics_search('Financial Highlights', 'Operating Cash Flow')
-    
+
     def get_levered_free_cash_flow(self):
         return self._statistics_search('Financial Highlights', 'Levered Free Cash Flow')
-    
+
 
     # Statistics | Trading information
     def get_trading_information(self):
@@ -733,122 +741,122 @@ class Share:
 
     def get_beta(self):
         return self._statistics_search('Trading Information', 'Beta')
-    
+
     def get_52_week_change(self):
         return self._statistics_search('Trading Information', '52-Week Change')
-    
+
     def get_sp500_52_week_change(self):
         return self._statistics_search('Trading Information', 'S&P500 52-Week Change')
-    
+
     def get_52_week_high(self):
         return self._statistics_search('Trading Information', '52 Week High')
-    
+
     def get_52_week_low(self):
         return self._statistics_search('Trading Information', '52 Week Low')
-    
+
     def get_50_day_average(self):
         return self._statistics_search('Trading Information', '50-Day Moving Average')
-    
+
     def get_200_day_average(self):
         return self._statistics_search('Trading Information', '200-Day Moving Average')
-    
+
     def get_avg_3_month_volume(self):
         return self._statistics_search('Trading Information', 'Avg Vol (3 month)')
-    
+
     def get_avg_10_day_volume(self):
         return self._statistics_search('Trading Information', 'Avg Vol (10 day)')
-    
+
     def get_shares_outstanding(self):
         return self._statistics_search('Trading Information', 'Shares Outstanding')
-    
+
     def get_float(self):
         return self._statistics_search('Trading Information', 'Float')
 
     def get_percent_held_insiders(self):
         return self._statistics_search('Trading Information', '% Held by Insiders')
-    
+
     def get_percent_held_institutions(self):
         return self._statistics_search('Trading Information', '% Held by Institutions')
-    
+
     def get_shares_short(self):
         return self._statistics_search('Trading Information', 'Shares Short')
 
     def get_short_ratio(self):
         return self._statistics_search('Trading Information', 'Short Ratio')
-    
+
     def get_short_percent_of_float(self):
         return self._statistics_search('Trading Information', 'Short % of Float')
-    
+
     def get_shares_short_prior(self):
         return self._statistics_search('Trading Information', 'Shares Short (prior month)')
-    
+
     def get_forward_dividend_rate(self):
         return self._statistics_search('Trading Information', 'Forward Annual Dividend Rate')
-    
+
     def get_forward_dividend_yield(self):
         return self._statistics_search('Trading Information', 'Forward Annual Dividend Yield')
-    
+
     def get_trailing_dividend_rate(self):
         return self._statistics_search('Trading Information', 'Trailing Annual Dividend Rate')
-    
+
     def get_trailing_dividend_yield(self):
         return self._statistics_search('Trading Information', 'Trailing Annual Dividend Yield')
-    
+
     def get_5_year_avg_dividend_yield(self):
         return self._statistics_search('Trading Information', '5 Year Average Dividend Yield')
-    
+
     def get_payout_ratio(self):
         return self._statistics_search('Trading Information', 'Payout Ratio')
-    
+
     def get_dividend_date(self):
         return self._statistics_search('Trading Information', 'Dividend Date')
-    
+
     def get_exdividend_date(self):
         return self._statistics_search('Trading Information', 'Ex-Dividend Date')
-    
+
     def get_last_split_factor(self):
         return self._statistics_search('Trading Information', 'Last Split Factor (new per old)')
-    
+
     def get_last_split_date(self):
         return self._statistics_search('Trading Information', 'Last Split Date')
-    
+
 
     # Profile | Company information
     def get_company_name(self):
         return search_soup(self.soup_profile, 'h3', 'class', 'Fz(m)')
-    
+
     def get_company_address(self):
         return self._company_address('p', 'data-reactid', '8')
-    
+
     def get_company_phone_number(self):
         return search_soup(self.soup_profile, 'a', 'data-reactid', '15')
 
     def get_company_website(self):
         return search_soup(self.soup_profile, 'a', 'target', '_blank')
-    
+
     def get_sector(self):
         return search_soup(self.soup_profile, 'strong', 'data-reactid', '21')
-    
+
     def get_industry(self):
         return search_soup(self.soup_profile, 'strong', 'data-reactid', '25')
-    
+
     def get_number_of_full_time_employees(self):
         return search_soup(self.soup_profile, 'strong', 'data-reactid', '29')
-    
+
     def get_key_executives(self):
         return self._key_executives('table', 'class', 'W(100%)')
- 
-    
+
+
     # Historical data
     def get_historical_day(self, date):
         return historical_data(self.url_summary, self.soup_summary, date)
-    
+
     def get_historical_days(self, from_date, to_date):
         return historical_data(self.url_summary, self.soup_summary, from_date, to_date, 'days')
-    
+
     def get_historical_range(self, from_date, to_date):
         return historical_data(self.url_summary, self.soup_summary, from_date, to_date, 'range')
-    
+
 
     # Custom Analysts Search
     def get_custom_analysts_search(self, heading):
@@ -858,19 +866,19 @@ class Share:
     # Analysts
     def get_analysts_earnings_estimate(self):
         return self._analysts_search('Earnings Estimate')
-    
+
     def get_analysts_revenue_estimate(self):
         return self._analysts_search('Revenue Estimate')
-    
+
     def get_analysts_earnings_history(self):
         return self._analysts_search('Earnings History')
-    
+
     def get_analysts_eps_trend(self):
         return self._analysts_search('EPS Trend')
-    
+
     def get_analysts_eps_revisions(self):
         return self._analysts_search('EPS Revisions')
-    
+
     def get_analysts_growth_estimates(self):
         return self._analysts_search('Growth Estimates')
 
